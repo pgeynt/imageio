@@ -18,7 +18,7 @@ max_execution_time = 300\n\
 max_input_time = 300" > /usr/local/etc/php/conf.d/imageio.ini
 
 # Install Composer
-COPY --from=composer:2 /usr/local/bin/composer /usr/local/bin/composer
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
 # Set DocumentRoot to public/
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
