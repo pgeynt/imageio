@@ -35,13 +35,13 @@ services:
 
         EXPOSE 80
     ports:
-      - "80:80"
+      - "8080:80"
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_DB: imageio
       POSTGRES_USER: imageio
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-imageio_secret_change_me}
-      APP_URL: ${APP_URL:-http://localhost}
+      APP_URL: ${APP_URL:-http://localhost:8080}
     volumes:
       - storage_data:/var/www/html/storage
     depends_on:
