@@ -46,7 +46,7 @@ class ExcelExport
             foreach ($item['images'] as $img) {
                 if ($img['status'] === 'downloaded' && !empty($img['storage_path'])) {
                     $col = (int) $img['position'] + 1; // position 1 = col B (2)
-                    $publicLink = $this->appUrl . '/storage/' . $img['storage_path'];
+                    $publicLink = $this->appUrl . '?page=storage&file=' . rawurlencode($img['storage_path']);
                     $sheet->setCellValue([$col, $rowNum], $publicLink);
                 }
             }

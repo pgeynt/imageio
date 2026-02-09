@@ -133,6 +133,7 @@ main.container {
     padding: 24px;
     margin-bottom: 20px;
     box-shadow: var(--shadow);
+    transition: box-shadow var(--transition), border-color var(--transition);
 }
 
 .card h2 {
@@ -357,6 +358,12 @@ main.container {
     margin-bottom: 20px;
     font-size: 0.9rem;
     line-height: 1.5;
+    animation: alert-in 0.3s ease;
+}
+
+@keyframes alert-in {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .alert-success {
@@ -552,6 +559,75 @@ main.container {
     font-size: 0.85rem;
     color: #2a4365;
     margin-bottom: 8px;
+}
+
+/* ── Upload overlay & progress ────────────────────────────────────────────── */
+
+.upload-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+
+.upload-overlay.is-visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.upload-overlay-card {
+    background: var(--color-surface);
+    padding: 28px 36px;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-md);
+    min-width: 280px;
+    text-align: center;
+}
+
+.upload-spinner {
+    width: 40px;
+    height: 40px;
+    margin: 0 auto 16px;
+    border: 3px solid var(--color-border);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: upload-spin 0.8s linear infinite;
+}
+
+@keyframes upload-spin {
+    to { transform: rotate(360deg); }
+}
+
+.upload-overlay-message {
+    margin-bottom: 16px;
+    font-size: 0.95rem;
+    color: var(--color-text);
+}
+
+.progress-bar-wrap {
+    height: 6px;
+    background: var(--color-bg);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-bar-indeterminate {
+    height: 100%;
+    width: 40%;
+    background: var(--color-primary);
+    border-radius: 3px;
+    animation: progress-indeterminate 1.2s ease-in-out infinite;
+}
+
+@keyframes progress-indeterminate {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(350%); }
 }
 
 /* ── Utilities ────────────────────────────────────────────────────────────── */

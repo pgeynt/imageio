@@ -13,8 +13,17 @@ $config = require __DIR__ . '/../config.php';
 $pdo = Database::connect($config['db']);
 Database::migrate($pdo);
 
-$appUrl  = $config['app_url'];
 $storagePath = $config['storage_path'];
+
+// APP_URL: env varsa kullan, yoksa veya localhost ise istekten türet (Excel/ZIP linkleri için doğru domain)
+$appUrl = $config['app_url'];
+if ($appUrl === '' || strpos($appUrl, 'localhost') !== false) {
+    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    $appUrl = $scheme . '://' . $host;
+} else {
+    $appUrl = rtrim($appUrl, '/');
+}
 
 // ── Session & Router ────────────────────────────────────────────────────────
 session_start();
@@ -131,6 +140,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 redirect('?page=upload-excel');
                 break;
             }
+
+            set_time_limit(600);
+            ini_set('memory_limit', '256M');
 
             $downloader = new ImageDownloader($config);
             $importer = new ExcelImport($downloader);
@@ -262,6 +274,44 @@ function renderLayout(string $content, string $page, ?array $flash, array $brand
             <p>imageio &copy; <?= date('Y') ?></p>
         </div>
     </footer>
+
+    <div id="upload-overlay" class="upload-overlay" aria-hidden="true">
+        <div class="upload-overlay-card">
+            <div class="upload-spinner" aria-hidden="true"></div>
+            <p id="upload-overlay-message" class="upload-overlay-message">Yukleniyor...</p>
+            <div class="progress-bar-wrap">
+                <div class="progress-bar-indeterminate"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    (function(){
+        var overlay = document.getElementById('upload-overlay');
+        var messageEl = document.getElementById('upload-overlay-message');
+        if (!overlay) return;
+
+        function showOverlay(msg) {
+            messageEl.textContent = msg || 'Yukleniyor...';
+            overlay.classList.add('is-visible');
+            overlay.setAttribute('aria-hidden', 'false');
+        }
+        function hideOverlay() {
+            overlay.classList.remove('is-visible');
+            overlay.setAttribute('aria-hidden', 'true');
+        }
+
+        document.querySelectorAll('form.js-upload-form, form.js-excel-form').forEach(function(f){
+            f.addEventListener('submit', function(){
+                var btn = f.querySelector('button[type="submit"]');
+                var msg = f.getAttribute('data-progress-message') || 'Isleniyor, lutfen bekleyin...';
+                if (btn) btn.disabled = true;
+                showOverlay(msg);
+            });
+        });
+
+    })();
+    </script>
 </body>
 </html>
 <?php
@@ -425,7 +475,7 @@ function renderUploadPage(array $brands): void
         </div>
     <?php else: ?>
         <div class="card">
-            <form method="POST" enctype="multipart/form-data">
+            <form method="POST" enctype="multipart/form-data" class="js-upload-form" data-progress-message="Gorseller yukleniyor...">
                 <input type="hidden" name="action" value="upload_single">
 
                 <div class="form-group">
@@ -503,7 +553,7 @@ function renderUploadExcelPage(array $brands): void
                 <p class="text-muted">Ilk satir baslik satiri olarak atlanir. Gorsel linkleri otomatik indirilir.</p>
             </div>
 
-            <form method="POST" enctype="multipart/form-data">
+            <form method="POST" enctype="multipart/form-data" class="js-excel-form" data-progress-message="Excel isleniyor ve gorseller indiriliyor, lutfen bekleyin...">
                 <input type="hidden" name="action" value="upload_excel">
 
                 <div class="form-group">
