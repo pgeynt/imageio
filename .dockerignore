@@ -1,0 +1,6 @@
+.git
+.env
+storage/*
+!storage/.gitkeep
+vendor/
+.dockerignore
