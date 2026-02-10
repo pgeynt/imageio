@@ -43,6 +43,9 @@ services:
       APP_URL: ${APP_URL:-http://imageio-72-60-178-115.traefik.me}
     volumes:
       - storage_data:/var/www/html/storage
+    networks:
+      - dokploy-network
+      - internal
     depends_on:
       postgres:
         condition: service_healthy
@@ -61,7 +64,15 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - internal
     restart: unless-stopped
+
+networks:
+  dokploy-network:
+    external: true
+  internal:
+    driver: bridge
 
 volumes:
   pg_data:
