@@ -11,9 +11,12 @@ services:
             libxml2-dev \
             && docker-php-ext-configure gd --with-freetype --with-jpeg \
             && docker-php-ext-install pdo pdo_pgsql zip gd dom xml \
-            && docker-php-ext-install xmlreader xmlwriter \
             && a2enmod rewrite \
             && rm -rf /var/lib/apt/lists/*
+
+        RUN mkdir -p /usr/local/include/php/ext/dom \
+            && cp /usr/src/php/ext/dom/*.h /usr/local/include/php/ext/dom/ \
+            && docker-php-ext-install xmlreader xmlwriter
 
         RUN echo "upload_max_filesize = 50M\n\
         post_max_size = 60M\n\
