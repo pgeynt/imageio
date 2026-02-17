@@ -610,11 +610,19 @@ main.container {
     color: var(--color-text);
 }
 
+.upload-progress-counter {
+    margin-bottom: 12px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--color-primary);
+}
+
 .progress-bar-wrap {
     height: 6px;
     background: var(--color-bg);
     border-radius: 3px;
     overflow: hidden;
+    position: relative;
 }
 
 .progress-bar-indeterminate {
@@ -623,6 +631,14 @@ main.container {
     background: var(--color-primary);
     border-radius: 3px;
     animation: progress-indeterminate 1.2s ease-in-out infinite;
+}
+
+.progress-bar-determinate {
+    height: 100%;
+    min-width: 0;
+    background: var(--color-primary);
+    border-radius: 3px;
+    transition: width 0.3s ease;
 }
 
 @keyframes progress-indeterminate {

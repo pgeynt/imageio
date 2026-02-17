@@ -8,52 +8,77 @@ use PDO;
 class ExcelImport
 {
     private ImageDownloader $downloader;
+    private int $maxExcelRows;
+    /** @var callable|null (int $done, int $total): void */
+    private $progressCallback;
 
-    public function __construct(ImageDownloader $downloader)
+    public function __construct(ImageDownloader $downloader, int $maxExcelRows = 500, ?callable $progressCallback = null)
     {
         $this->downloader = $downloader;
+        $this->maxExcelRows = $maxExcelRows;
+        $this->progressCallback = $progressCallback;
     }
 
     /**
      * Import Excel file: each row = title + up to 5 image URLs.
-     * Expected columns: baslik, gorsel-1, gorsel-2, gorsel-3, gorsel-4, gorsel-5
-     * Returns ['success' => int, 'failed' => int, 'errors' => string[]]
+     * Uses row iterator to avoid loading full sheet into memory.
+     * Returns ['success' => int, 'failed' => int, 'errors' => string[], 'total' => int]
      */
     public function import(PDO $pdo, string $filePath, int $brandId): array
     {
-        $result = ['success' => 0, 'failed' => 0, 'errors' => []];
+        $result = ['success' => 0, 'failed' => 0, 'errors' => [], 'total' => 0];
 
         try {
             $spreadsheet = IOFactory::load($filePath);
             $sheet = $spreadsheet->getActiveSheet();
-            $rows = $sheet->toArray(null, true, true, true);
         } catch (\Exception $e) {
             $result['errors'][] = 'Excel dosyasi okunamadi: ' . $e->getMessage();
+            Logger::error('Excel load failed: ' . $e->getMessage(), ['file' => $filePath]);
             return $result;
         }
 
-        if (empty($rows)) {
-            $result['errors'][] = 'Excel dosyasi bos.';
+        $highestRow = $sheet->getHighestDataRow();
+        if ($highestRow < 2) {
+            $result['errors'][] = 'Excel dosyasi bos veya sadece baslik satiri var.';
             return $result;
         }
 
-        // First row is header - skip it
-        $isFirst = true;
+        $total = $highestRow - 1; // exclude header
+        $totalToProcess = min($total, $this->maxExcelRows);
+        $result['total'] = $total;
+
+        if ($total > $this->maxExcelRows) {
+            $result['errors'][] = "En fazla {$this->maxExcelRows} satir islenir. " . ($total - $this->maxExcelRows) . " satir atlandi.";
+        }
+
+        $done = 0;
         $rowNum = 0;
 
-        foreach ($rows as $row) {
+        if ($this->progressCallback !== null) {
+            ($this->progressCallback)(0, $totalToProcess);
+        }
+
+        foreach ($sheet->getRowIterator() as $row) {
             $rowNum++;
-            if ($isFirst) {
-                $isFirst = false;
-                continue;
+            if ($rowNum === 1) {
+                continue; // header
             }
 
-            // Column A = title, B-F = image URLs (gorsel-1 through gorsel-5)
-            $values = array_values($row);
+            if ($rowNum - 1 > $totalToProcess) {
+                break; // limit data rows processed
+            }
+
+            $cellIterator = $row->getCellIterator();
+            $cellIterator->setIterateOnlyExistingCells(false);
+            $values = [];
+            foreach ($cellIterator as $cell) {
+                $values[] = $cell->getValue();
+            }
+
             $title = trim((string) ($values[0] ?? ''));
 
             if (empty($title)) {
-                continue; // Skip empty rows
+                continue;
             }
 
             try {
@@ -66,7 +91,6 @@ class ExcelImport
                         continue;
                     }
 
-                    // Validate URL
                     if (!filter_var($url, FILTER_VALIDATE_URL)) {
                         $result['errors'][] = "Satir {$rowNum}, gorsel-{$i}: Gecersiz URL - {$url}";
                         continue;
@@ -74,7 +98,6 @@ class ExcelImport
 
                     $imageId = Database::createImage($pdo, $itemId, $i, $url);
 
-                    // Download the image immediately
                     $downloaded = $this->downloader->downloadAndSave(
                         $pdo, $imageId, $url, $brandId, $itemId
                     );
@@ -86,15 +109,21 @@ class ExcelImport
                     }
                 }
 
-                if ($hasImage) {
-                    $result['success']++;
-                } else {
-                    // Item created but no images downloaded - still count
-                    $result['success']++;
-                }
+                $result['success']++;
             } catch (\Exception $e) {
                 $result['failed']++;
                 $result['errors'][] = "Satir {$rowNum}: Hata - " . $e->getMessage();
+                Logger::error("Excel row {$rowNum} failed: " . $e->getMessage(), [
+                    'brand_id' => $brandId,
+                    'title' => $title ?? '',
+                    'trace' => $e->getTraceAsString(),
+                ]);
+            }
+
+            $done++;
+
+            if ($this->progressCallback !== null) {
+                ($this->progressCallback)($done, $totalToProcess);
             }
         }
 

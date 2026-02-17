@@ -76,7 +76,7 @@ class ImageDownloader
 
             return [$relativePath, $publicFilename];
         } catch (\Exception $e) {
-            error_log("ImageDownloader error for {$url}: " . $e->getMessage());
+            Logger::error("ImageDownloader error for {$url}: " . $e->getMessage());
             return null;
         }
     }

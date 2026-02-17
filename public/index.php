@@ -7,9 +7,11 @@ use App\ImageDownloader;
 use App\ExcelImport;
 use App\ExcelExport;
 use App\ZipExport;
+use App\Logger;
 
 // ── Config ──────────────────────────────────────────────────────────────────
 $config = require __DIR__ . '/../config.php';
+Logger::init($config['log_path'] ?? '');
 $pdo = Database::connect($config['db']);
 Database::migrate($pdo);
 
@@ -136,16 +138,58 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         case 'upload_excel':
             $brandId = (int) ($_POST['brand_id'] ?? 0);
             if (!$brandId || !isset($_FILES['excel']) || $_FILES['excel']['error'] !== UPLOAD_ERR_OK) {
+                if (!empty($_POST['ajax'])) {
+                    header('Content-Type: application/x-ndjson');
+                    echo json_encode(['error' => 'Marka secin ve Excel dosyasi yukleyin.']) . "\n";
+                    exit;
+                }
                 flash('Marka secin ve Excel dosyasi yukleyin.', 'error');
                 redirect('?page=upload-excel');
                 break;
             }
 
-            set_time_limit(600);
-            ini_set('memory_limit', '256M');
+            set_time_limit(0);
+            ini_set('memory_limit', '512M');
 
+            $maxExcelRows = (int) ($config['max_excel_rows'] ?? 500);
             $downloader = new ImageDownloader($config);
-            $importer = new ExcelImport($downloader);
+
+            if (!empty($_POST['ajax'])) {
+                while (ob_get_level()) {
+                    ob_end_clean();
+                }
+                header('Content-Type: application/x-ndjson; charset=utf-8');
+                header('Cache-Control: no-cache');
+                header('X-Accel-Buffering: no');
+
+                $progressCallback = function (int $done, int $total) {
+                    echo json_encode(['done' => $done, 'total' => $total]) . "\n";
+                    if (function_exists('flush')) {
+                        flush();
+                    }
+                };
+
+                $importer = new ExcelImport($downloader, $maxExcelRows, $progressCallback);
+                $result = $importer->import($pdo, $_FILES['excel']['tmp_name'], $brandId);
+
+                $message = "{$result['success']} baslik islendi.";
+                if ($result['failed'] > 0) {
+                    $message .= " {$result['failed']} baslik hata ile atlandi.";
+                }
+                if (!empty($result['errors'])) {
+                    $message .= "\nDetaylar: " . implode('; ', array_slice($result['errors'], 0, 10));
+                }
+
+                echo json_encode([
+                    'done' => $result['total'],
+                    'total' => $result['total'],
+                    'redirect' => '?page=brand&id=' . $brandId,
+                    'message' => $message,
+                ]) . "\n";
+                exit;
+            }
+
+            $importer = new ExcelImport($downloader, $maxExcelRows);
             $result = $importer->import($pdo, $_FILES['excel']['tmp_name'], $brandId);
 
             $message = "{$result['success']} baslik islendi.";
@@ -279,8 +323,10 @@ function renderLayout(string $content, string $page, ?array $flash, array $brand
         <div class="upload-overlay-card">
             <div class="upload-spinner" aria-hidden="true"></div>
             <p id="upload-overlay-message" class="upload-overlay-message">Yukleniyor...</p>
+            <div id="upload-progress-counter" class="upload-progress-counter" style="display:none;"></div>
             <div class="progress-bar-wrap">
-                <div class="progress-bar-indeterminate"></div>
+                <div id="progress-bar-indeterminate" class="progress-bar-indeterminate"></div>
+                <div id="progress-bar-determinate" class="progress-bar-determinate" style="display:none; width:0%;"></div>
             </div>
         </div>
     </div>
@@ -289,10 +335,24 @@ function renderLayout(string $content, string $page, ?array $flash, array $brand
     (function(){
         var overlay = document.getElementById('upload-overlay');
         var messageEl = document.getElementById('upload-overlay-message');
+        var counterEl = document.getElementById('upload-progress-counter');
+        var barIndet = document.getElementById('progress-bar-indeterminate');
+        var barDet = document.getElementById('progress-bar-determinate');
         if (!overlay) return;
 
-        function showOverlay(msg) {
+        function showOverlay(msg, showCounter) {
             messageEl.textContent = msg || 'Yukleniyor...';
+            if (showCounter) {
+                counterEl.style.display = 'block';
+                counterEl.textContent = '0 / 0 urun islendi';
+                barIndet.style.display = 'none';
+                barDet.style.display = 'block';
+                barDet.style.width = '0%';
+            } else {
+                counterEl.style.display = 'none';
+                barIndet.style.display = 'block';
+                barDet.style.display = 'none';
+            }
             overlay.classList.add('is-visible');
             overlay.setAttribute('aria-hidden', 'false');
         }
@@ -300,16 +360,77 @@ function renderLayout(string $content, string $page, ?array $flash, array $brand
             overlay.classList.remove('is-visible');
             overlay.setAttribute('aria-hidden', 'true');
         }
+        function setProgress(done, total) {
+            if (!counterEl || !barDet) return;
+            counterEl.textContent = total + ' urunden ' + done + '\'i yapildi';
+            var pct = total > 0 ? Math.round((done / total) * 100) : 0;
+            barDet.style.width = pct + '%';
+        }
 
-        document.querySelectorAll('form.js-upload-form, form.js-excel-form').forEach(function(f){
+        document.querySelectorAll('form.js-upload-form').forEach(function(f){
             f.addEventListener('submit', function(){
                 var btn = f.querySelector('button[type="submit"]');
-                var msg = f.getAttribute('data-progress-message') || 'Isleniyor, lutfen bekleyin...';
+                var msg = f.getAttribute('data-progress-message') || 'Yukleniyor...';
                 if (btn) btn.disabled = true;
-                showOverlay(msg);
+                showOverlay(msg, false);
             });
         });
 
+        document.querySelectorAll('form.js-excel-form').forEach(function(f){
+            f.addEventListener('submit', function(ev){
+                ev.preventDefault();
+                var btn = f.querySelector('button[type="submit"]');
+                if (btn) btn.disabled = true;
+                showOverlay('Excel isleniyor...', true);
+
+                var formData = new FormData(f);
+                formData.append('ajax', '1');
+
+                fetch(f.action || window.location.href, { method: 'POST', body: formData })
+                    .then(function(res) {
+                        if (!res.ok) throw new Error('Yukleme hatasi: ' + res.status);
+                        return res.body.getReader();
+                    })
+                    .then(function(reader) {
+                        var decoder = new TextDecoder();
+                        var buf = '';
+                        function processChunk(r) {
+                            if (r.done) return;
+                            buf += decoder.decode(r.value, { stream: true });
+                            var lines = buf.split('\n');
+                            buf = lines.pop() || '';
+                            lines.forEach(function(line) {
+                                line = line.trim();
+                                if (!line) return;
+                                try {
+                                    var data = JSON.parse(line);
+                                    if (data.error) {
+                                        messageEl.textContent = data.error;
+                                        if (btn) btn.disabled = false;
+                                        return;
+                                    }
+                                    if (data.done !== undefined && data.total !== undefined) {
+                                        setProgress(data.done, data.total);
+                                    }
+                                    if (data.redirect) {
+                                        if (data.message) messageEl.textContent = data.message;
+                                        setTimeout(function() { window.location.href = data.redirect; }, 500);
+                                    }
+                                } catch (e) {}
+                            });
+                            return reader.read().then(processChunk);
+                        }
+                        return reader.read().then(processChunk);
+                    })
+                    .catch(function(err) {
+                        messageEl.textContent = err.message || 'Bir hata olustu.';
+                        if (btn) btn.disabled = false;
+                        counterEl.style.display = 'none';
+                        barDet.style.display = 'none';
+                        barIndet.style.display = 'block';
+                    });
+            });
+        });
     })();
     </script>
 </body>
