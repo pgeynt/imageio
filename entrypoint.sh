@@ -16,7 +16,10 @@ docker-php-ext-install -j$(nproc) pdo pdo_pgsql zip gd
 a2enmod rewrite
 
 # PostgreSQL: tek veri dizini (surumden bagimsiz); volume pg_data buraya mount
+# Volume root'a ait oldugu icin once sahipligi postgres yap (initdb "Operation not permitted" onlenir)
 PG_DATA=/var/lib/postgresql/data
+mkdir -p "$PG_DATA"
+chown -R postgres:postgres "$PG_DATA"
 PG_VER=$(ls /usr/lib/postgresql 2>/dev/null | head -1)
 if [ -z "$PG_VER" ]; then
     echo "PostgreSQL binary not found" >&2
