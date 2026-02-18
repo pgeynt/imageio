@@ -45,11 +45,10 @@ if [ ! -f /var/www/html/vendor/autoload.php ]; then
     php -d memory_limit=-1 /usr/local/bin/composer install --no-dev --optimize-autoloader --no-interaction --ignore-platform-reqs
 fi
 
-# Apache DocumentRoot -> public
-sed -ri -e 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/*.conf
-sed -ri -e 's!/var/www/html!/var/www/html/public!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
-sed -i '/<Directory \/var\/www\/>/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf
-grep -q 'DirectoryIndex index.php' /etc/apache2/sites-available/000-default.conf || echo 'DirectoryIndex index.php' >> /etc/apache2/sites-available/000-default.conf
+# Apache DocumentRoot -> public (sabit config; sed tekrarda path bozulmasin diye kullanilmiyor)
+cp /var/www/html/apache-imageio.conf /etc/apache2/sites-available/imageio.conf
+a2dissite 000-default.conf 2>/dev/null || true
+a2ensite imageio.conf
 
 # Storage dizini
 mkdir -p /var/www/html/storage

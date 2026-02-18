@@ -22,7 +22,7 @@ Proje ayarlarında **Environment** bölümüne ekleyin:
 
 | Değişken             | Zorunlu | Açıklama |
 |----------------------|--------|----------|
-| `APP_URL`            | Evet   | Uygulamanın dış erişim adresi; Dokploy domain’iniz (örn. `https://imageio-xxx.traefik.me`). Excel/ZIP linkleri için kullanılır. |
+| `APP_URL`            | Evet   | Uygulamanın dış erişim adresi; Dokploy domain’iniz (örn. `https://imageio-web-kcfxsk-1fd310-72-60-178-115.traefik.me`). Excel/ZIP linkleri için kullanılır. |
 | `POSTGRES_PASSWORD`  | Hayır  | Veritabanı şifresi. Verilmezse varsayılan `imageio_secret_change_me` kullanılır (üretimde mutlaka değiştirin). |
 | `POSTGRES_DB`        | Hayır  | Veritabanı adı (varsayılan: `imageio`). |
 | `POSTGRES_USER`      | Hayır  | Veritabanı kullanıcısı (varsayılan: `imageio`). |
