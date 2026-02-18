@@ -66,13 +66,11 @@ if [ ! -f /var/www/html/vendor/autoload.php ]; then
     php -d memory_limit=-1 /usr/local/bin/composer install --no-dev --optimize-autoloader --no-interaction --ignore-platform-reqs
 fi
 
-# Apache DocumentRoot -> public (sabit config; sed tekrarda path bozulmasin diye kullanilmiyor)
+# Apache: varsayilan site (000-default) da public/ gostersin; GET / 404 olmasin
 cp /var/www/html/apache-imageio.conf /etc/apache2/sites-available/imageio.conf
-a2dissite 000-default.conf 2>/dev/null || true
+cp /var/www/html/apache-imageio.conf /etc/apache2/sites-available/000-default.conf
 a2ensite imageio.conf
-
-# GET / 404 onlenir: varsayilan vhost veya root docroot kullanilirsa bile kokte index.php olsun
-printf '%s' '<?php require __DIR__ . "/public/index.php";' > /var/www/html/index.php
+# 000-default zaten etkin; her iki site de public/ kullanir
 
 # Storage dizini
 mkdir -p /var/www/html/storage
