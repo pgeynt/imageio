@@ -674,7 +674,7 @@ function renderUploadExcelPage(array $brands): void
                 <p class="text-muted">Ilk satir baslik satiri olarak atlanir. Gorsel linkleri otomatik indirilir.</p>
             </div>
 
-            <form method="POST" enctype="multipart/form-data" class="js-excel-form" data-progress-message="Excel isleniyor ve gorseller indiriliyor, lutfen bekleyin...">
+            <form method="POST" action="" enctype="multipart/form-data" class="js-excel-form" data-progress-message="Excel isleniyor ve gorseller indiriliyor, lutfen bekleyin...">
                 <input type="hidden" name="action" value="upload_excel">
 
                 <div class="form-group">
