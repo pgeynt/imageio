@@ -66,11 +66,16 @@ if [ ! -f /var/www/html/vendor/autoload.php ]; then
     php -d memory_limit=-1 /usr/local/bin/composer install --no-dev --optimize-autoloader --no-interaction --ignore-platform-reqs
 fi
 
-# Apache: varsayilan site (000-default) da public/ gostersin; GET / 404 olmasin
+# Apache: her iki site de DocumentRoot public/; GET / 404 onlenir
 cp /var/www/html/apache-imageio.conf /etc/apache2/sites-available/imageio.conf
 cp /var/www/html/apache-imageio.conf /etc/apache2/sites-available/000-default.conf
+a2ensite 000-default.conf
 a2ensite imageio.conf
-# 000-default zaten etkin; her iki site de public/ kullanir
+# public/index.php yoksa (volume bos?) fallback: 200 + mesaj, 404 degil
+if [ ! -f /var/www/html/public/index.php ]; then
+    mkdir -p /var/www/html/public
+    printf '%s' '<?php header("Content-Type: text/plain; charset=utf-8"); echo "imageio: Application code not found. Check volume mount for /var/www/html.";' > /var/www/html/public/index.php
+fi
 
 # Storage dizini
 mkdir -p /var/www/html/storage
