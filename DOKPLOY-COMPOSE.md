@@ -14,7 +14,7 @@ Bu proje **Dockerfile kullanmadan**, sadece `docker-compose.yml` ve bir entrypoi
 
 - **Build Type / Application Type:** **Docker Compose** seçin.
 - **Compose File Path:** `docker-compose.yml`
-- **Dockerfile / Docker File** alanı: **Boş bırakın** (kullanılmıyor).
+- **Dockerfile / Docker File** alanı: **Boş bırakın**. Dockerfile projeden kaldırıldı; sadece Compose kullanın, **build yapmayın**.
 
 ## 2. Environment (Ortam değişkenleri)
 
