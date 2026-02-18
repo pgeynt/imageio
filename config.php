@@ -11,7 +11,7 @@ return [
     'storage_path' => __DIR__ . '/storage',
     'log_path' => __DIR__ . '/storage/logs/app.log',
     'max_images_per_item' => 5,
-    'max_excel_rows' => (int) (getenv('MAX_EXCEL_ROWS') ?: 500),
+    'max_excel_rows' => (int) (getenv('MAX_EXCEL_ROWS') ?: 0),
     'download_timeout' => 30,
     'max_file_size' => 20 * 1024 * 1024, // 20MB
 ];

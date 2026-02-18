@@ -151,7 +151,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             set_time_limit(0);
             ini_set('memory_limit', '512M');
 
-            $maxExcelRows = (int) ($config['max_excel_rows'] ?? 500);
+            $maxExcelRows = (int) ($config['max_excel_rows'] ?? 0);
             $downloader = new ImageDownloader($config);
 
             if (!empty($_POST['ajax'])) {

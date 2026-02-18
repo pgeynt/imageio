@@ -12,7 +12,7 @@ class ExcelImport
     /** @var callable|null (int $done, int $total): void */
     private $progressCallback;
 
-    public function __construct(ImageDownloader $downloader, int $maxExcelRows = 500, ?callable $progressCallback = null)
+    public function __construct(ImageDownloader $downloader, int $maxExcelRows = 0, ?callable $progressCallback = null)
     {
         $this->downloader = $downloader;
         $this->maxExcelRows = $maxExcelRows;
@@ -44,10 +44,10 @@ class ExcelImport
         }
 
         $total = $highestRow - 1; // exclude header
-        $totalToProcess = min($total, $this->maxExcelRows);
+        $totalToProcess = ($this->maxExcelRows <= 0) ? $total : min($total, $this->maxExcelRows);
         $result['total'] = $total;
 
-        if ($total > $this->maxExcelRows) {
+        if ($this->maxExcelRows > 0 && $total > $this->maxExcelRows) {
             $result['errors'][] = "En fazla {$this->maxExcelRows} satir islenir. " . ($total - $this->maxExcelRows) . " satir atlandi.";
         }
 
