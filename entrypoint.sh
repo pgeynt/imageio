@@ -4,21 +4,28 @@ set -e
 cd /var/www/html
 
 # Sistem paketleri, PHP eklentileri ve PostgreSQL (aynı container'da)
+# postgresql: distro varsayilan surumu (Debian Bookworm=15, Trixie=17)
 apt-get update
 apt-get install -y --no-install-recommends \
     libpq-dev libzip-dev unzip curl \
     libfreetype-dev libjpeg62-turbo-dev libpng-dev libwebp-dev \
     libxml2-dev \
-    postgresql-15
+    postgresql
 docker-php-ext-configure gd --with-freetype --with-jpeg
 docker-php-ext-install -j$(nproc) pdo pdo_pgsql zip gd
 a2enmod rewrite
 
-# PostgreSQL: volume bos ise init (pg_createcluster postinst bazen mount'tan sonra calismis olur)
-if [ ! -f /var/lib/postgresql/15/main/PG_VERSION ]; then
-    su postgres -c "/usr/lib/postgresql/15/bin/initdb -D /var/lib/postgresql/15/main"
+# PostgreSQL: tek veri dizini (surumden bagimsiz); volume pg_data buraya mount
+PG_DATA=/var/lib/postgresql/data
+PG_VER=$(ls /usr/lib/postgresql 2>/dev/null | head -1)
+if [ -z "$PG_VER" ]; then
+    echo "PostgreSQL binary not found" >&2
+    exit 1
 fi
-service postgresql start
+if [ ! -f "$PG_DATA/PG_VERSION" ]; then
+    su postgres -c "/usr/lib/postgresql/$PG_VER/bin/initdb -D $PG_DATA"
+fi
+su postgres -c "/usr/lib/postgresql/$PG_VER/bin/pg_ctl start -D $PG_DATA -w"
 until pg_isready -U postgres; do sleep 1; done
 # Kullanici ve veritabani (env'den; varsa hata yoksayilir; sifre icin tek tirnak escape)
 SAFE_PASS="${POSTGRES_PASSWORD//\'/\'\'}"
