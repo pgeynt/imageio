@@ -2,7 +2,7 @@
 
 return [
     'db' => [
-        'host'     => getenv('POSTGRES_HOST') ?: 'localhost',
+        'host'     => getenv('POSTGRES_HOST') ?: 'postgres',
         'dbname'   => getenv('POSTGRES_DB') ?: 'imageio',
         'user'     => getenv('POSTGRES_USER') ?: 'imageio',
         'password' => getenv('POSTGRES_PASSWORD') ?: 'imageio_secret',

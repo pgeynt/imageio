@@ -30,4 +30,9 @@ RUN mkdir -p /var/www/html/storage \
     && chown -R www-data:www-data /var/www/html/storage \
     && chmod -R 775 /var/www/html/storage
 
+# Varsayilan DB (Compose ile postgres container adi; Dokploy env ile ezilebilir)
+ENV POSTGRES_HOST=postgres
+ENV POSTGRES_DB=imageio
+ENV POSTGRES_USER=imageio
+
 EXPOSE 80
