@@ -30,10 +30,21 @@ if [ ! -f "$PG_DATA/PG_VERSION" ]; then
 fi
 su postgres -c "/usr/lib/postgresql/$PG_VER/bin/pg_ctl start -D $PG_DATA -w"
 until pg_isready -U postgres; do sleep 1; done
-# Kullanici ve veritabani (env'den; varsa hata yoksayilir; sifre icin tek tirnak escape)
+# Kullanici ve veritabani: SQL dosyasi ile (shell kacirma hatalarini onler); idempotent
 SAFE_PASS="${POSTGRES_PASSWORD//\'/\'\'}"
-su postgres -c "psql -U postgres -c \"CREATE USER \\\"${POSTGRES_USER}\\\" WITH PASSWORD '\''${SAFE_PASS}'\'';\" 2>/dev/null" || true
-su postgres -c "psql -U postgres -c \"CREATE DATABASE \\\"${POSTGRES_DB}\\\" OWNER \\\"${POSTGRES_USER}\\\";\" 2>/dev/null" || true
+PG_USER="${POSTGRES_USER:-imageio}"
+PG_DB="${POSTGRES_DB:-imageio}"
+cat > /tmp/init-db.sql <<EOSQL
+DO \$\$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${PG_USER}') THEN
+    CREATE ROLE "${PG_USER}" LOGIN PASSWORD '${SAFE_PASS}';
+  END IF;
+END \$\$;
+EOSQL
+su postgres -c "psql -U postgres -f /tmp/init-db.sql"
+echo "CREATE DATABASE \"${PG_DB}\" OWNER \"${PG_USER}\";" | su postgres -c "psql -U postgres -f -" || true
+rm -f /tmp/init-db.sql
 
 rm -rf /var/lib/apt/lists/*
 
