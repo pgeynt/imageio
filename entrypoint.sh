@@ -71,6 +71,9 @@ cp /var/www/html/apache-imageio.conf /etc/apache2/sites-available/imageio.conf
 a2dissite 000-default.conf 2>/dev/null || true
 a2ensite imageio.conf
 
+# GET / 404 onlenir: varsayilan vhost veya root docroot kullanilirsa bile kokte index.php olsun
+printf '%s' '<?php require __DIR__ . "/public/index.php";' > /var/www/html/index.php
+
 # Storage dizini
 mkdir -p /var/www/html/storage
 chown -R www-data:www-data /var/www/html/storage
