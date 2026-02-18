@@ -1,6 +1,28 @@
+# Git
 .git
+.gitignore
+
+# IDE / OS
+.idea
+.vscode
+*.swp
+.DS_Store
+Thumbs.db
+
+# Env (sifreler imaja girmesin)
 .env
-storage/*
-!storage/.gitkeep
-vendor/
-.dockerignore
+.env.*
+!.env.example
+
+# Loglar ve upload (container icinde volume ile mount edilir)
+storage/logs/*.log
+storage/app/*
+
+# Dokümantasyon (calisma icin gerekli degil)
+*.md
+!README.md
+
+# Test / gelistirme
+tests
+phpunit.xml
+.phpunit.result.cache

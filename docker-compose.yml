@@ -2,40 +2,7 @@ services:
   web:
     build:
       context: .
-      dockerfile_inline: |
-        FROM php:8.2-apache
-
-        RUN apt-get update && apt-get install -y \
-            libpq-dev libzip-dev unzip curl \
-            libfreetype-dev libjpeg62-turbo-dev libpng-dev libwebp-dev \
-            libxml2-dev \
-            && docker-php-ext-configure gd --with-freetype --with-jpeg \
-            && docker-php-ext-install pdo pdo_pgsql zip gd \
-            && a2enmod rewrite \
-            && rm -rf /var/lib/apt/lists/*
-
-        RUN echo "upload_max_filesize = 50M\n\
-        post_max_size = 60M\n\
-        memory_limit = 256M\n\
-        max_execution_time = 300\n\
-        max_input_time = 300" > /usr/local/etc/php/conf.d/imageio.ini
-
-        RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
-
-        RUN sed -ri -e 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/*.conf \
-            && sed -ri -e 's!/var/www/html!/var/www/html/public!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
-        RUN sed -i '/<Directory \/var\/www\/>/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf
-        RUN echo 'DirectoryIndex index.php' >> /etc/apache2/sites-available/000-default.conf
-
-        COPY . /var/www/html/
-        ENV COMPOSER_ALLOW_SUPERUSER=1
-        RUN cd /var/www/html && php -d memory_limit=-1 /usr/local/bin/composer install --no-dev --optimize-autoloader --no-interaction --ignore-platform-reqs
-
-        RUN mkdir -p /var/www/html/storage \
-            && chown -R www-data:www-data /var/www/html/storage \
-            && chmod -R 775 /var/www/html/storage
-
-        EXPOSE 80
+      dockerfile: Dockerfile
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_DB: imageio
